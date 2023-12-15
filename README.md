@@ -5,7 +5,7 @@ This guide provides instructions for setting up and using Docker containers for 
 ### Useful Resources
 
 - **Containers For Deep Learning**: [NVIDIA User Guide](https://docs.nvidia.com/deeplearning/frameworks/user-guide/index.html)
-- **Running PyTorch in Docker Containers with NVIDIA GPUs**: [NVIDIA PyTorch Release Notes](https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/running.html)
+- **Running PyTorch in Docker Containers with NVIDIA GPUs**: [NVIDIA PyTorch Notes](https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/running.html)
 
 ### Setup Instructions
 
@@ -23,4 +23,4 @@ This guide provides instructions for setting up and using Docker containers for 
 - **Starting the Container**:
     - Run `docker compose up -d --build` to build and start the container in detached mode.
 - **Accessing Jupyter Lab**:
-    - Connect to Jupyter Lab through [http://localhost:8000](http://localhost:8000/).
+    - Connect to Jupyter Lab through http://<ip-address>:<port>/?token=<token>.
