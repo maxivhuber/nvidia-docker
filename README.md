@@ -23,4 +23,4 @@ This guide provides instructions for setting up and using Docker containers for 
 - **Starting the Container**:
     - Run `docker compose up -d --build` to build and start the container in detached mode.
 - **Accessing Jupyter Lab**:
-    - Connect to Jupyter Lab through http://<ip-address>:<port>/?token=<token>.
+    - Connect to Jupyter Lab through `http://<ip-address>:<port>/?token=<token>`
