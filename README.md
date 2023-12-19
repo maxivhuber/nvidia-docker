@@ -10,7 +10,7 @@ This guide provides instructions for setting up and using Docker containers for 
 ### Setup Instructions
 
 1. **Project Folder**:
-    - Rename your project folder `my-project`.
+    - Rename your project folder `my_project`.
 2. **Environment Variables**:
     - Open the `.env` file in the root directory.
     - Set your project name as an environment variable (e.g., `PROJECT_NAME=my_project`).

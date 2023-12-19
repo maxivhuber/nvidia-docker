@@ -1,0 +1,14 @@
+{
+    "peers": {
+        "server1": {
+            "hostname": "server1.domain",
+            "username": "user1",
+            "ssh_key": "/home/user1/.ssh/server1"
+        },
+        "server2": {
+            "hostname": "server2.domain",
+            "username": "user2",
+            "ssh_key": "/home/user2/.ssh/server2"
+        }
+    }
+}
