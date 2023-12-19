@@ -29,8 +29,15 @@ This guide provides instructions for setting up and using Docker containers for 
 
 - **Sync Script**:
     - The `sync` folder contains a script for synchronizing your working directory with remote nodes, essential for training on a cluster.
-    - Execute the script using `bash sync/sync.sh <local_absolute_path> <remote_relative_path>`.
-    - For example: `bash sync/sync.sh ~/my_project/ .sync/my_project`.
+    - The script now includes an additional action parameter, which can be either `start` or `stop`.
+    - **Starting synchronization and Docker containers**:
+        - Execute the script with the `start` action to synchronize files and start Docker containers on the remote nodes.
+        - Usage: `bash sync/sync.sh <local_absolute_path> <remote_relative_path> start`.
+        - For example: `bash sync/sync.sh ~/my_project/ .sync/my_project start`.
+    - **Stopping Docker containers**:
+        - Execute the script with the `stop` action to stop Docker containers on the remote nodes without synchronizing files.
+        - Usage: `bash sync/sync.sh <local_absolute_path> <remote_relative_path> stop`.
+        - For example: `bash sync/sync.sh ~/my_project/ .sync/my_project stop`.
 - **Configuring Sync Settings**:
     - Adapt the `sync/config.json` file to include your own nodes, their respective SSH access details, and keys. The structure of the file is as follows:
       ```json
@@ -50,6 +57,3 @@ This guide provides instructions for setting up and using Docker containers for 
       }
       ```
     - Ensure to replace `node1`, `node2`, `your_username`, and the SSH key paths with your actual node details.
-- **Automatic Docker Container Start**:
-    - Upon successful synchronization, the Docker container will automatically start on the remote nodes using the provided script.
-
