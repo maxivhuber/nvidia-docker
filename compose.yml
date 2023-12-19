@@ -5,6 +5,8 @@ services:
       args:
         - JUPYTER_TOKEN=${JUPYTER_TOKEN}
     image: ml-lab:latest
+    env_file:
+      - .env
     volumes:
       - type: bind
         source: ./${PROJECT_NAME}
@@ -14,7 +16,6 @@ services:
         target: /workspace/data
     ports:
       - "8000:8888"
-
     ipc: host
     ulimits:
       stack: '67108864'

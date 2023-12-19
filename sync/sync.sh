@@ -22,7 +22,9 @@ if [[ "$action" != "start" ]] && [[ "$action" != "stop" ]]; then
 fi
 
 # Iterate over the peers defined in the JSON config file
+counter=0
 jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(.value.ssh_key)"' "$config_file" | while IFS=' ' read -r peer_name peer_host peer_user peer_ssh_key; do
+  counter=$((counter + 1))
   # Check if the host is reachable and the SSH key exists
   if ping -c 1 "$peer_host" &> /dev/null && [[ -e "$peer_ssh_key" ]]; then
     # Display the details of the current peer
@@ -30,15 +32,14 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
 
     if [[ "$action" == "start" ]]; then
       # Execute rsync command to synchronize files
-      rsync --mkpath -acqz --delete -e "ssh -i $peer_ssh_key" "$source_directory" "${peer_user}@${peer_host}:~/${target_directory}" --exclude='/.git'
-
+      rsync --mkpath -acqz --delete -e "ssh -i $peer_ssh_key" "$source_directory"/ "${peer_user}@${peer_host}:~/${target_directory}" --exclude='/.git'
+      
       # SSH into the remote host and run docker-compose up
-      ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && docker compose up -d --build --force-recreate'" > /dev/null 2>&1
+      ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && sed -i 's/^NODE_RANK=.*/NODE_RANK=${counter}/' .env && docker compose up -d --build --force-recreate'" > /dev/null 2>&1
     elif [[ "$action" == "stop" ]]; then
       # SSH into the remote host and stop docker-compose
       ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && docker compose down'" > /dev/null 2>&1
     fi
-
   else
     echo "$peer_host is unreachable or $peer_ssh_key does not exist"
   fi
