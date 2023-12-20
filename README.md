@@ -6,6 +6,7 @@ This guide provides instructions for setting up and using Podman containers for 
 
 - **Containers For Deep Learning**: [NVIDIA User Guide](https://docs.nvidia.com/deeplearning/frameworks/user-guide/index.html)
 - **Podman and the NVIDIA Container Toolkit**: [Installing Podman](https://docs.nvidia.com/ai-enterprise/deployment-guide-rhel-with-kvm/0.1.0/podman.html)
+- **Support for Container Device Interface** [Running a Workload with CDI](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html#running-a-workload-with-cdi)
 - **Running PyTorch in Docker Containers with NVIDIA GPUs**: [NVIDIA PyTorch Notes](https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/running.html)
 - **Run on an On-Prem Cluster**: [Pytorch Cluster Setup](https://lightning.ai/docs/pytorch/stable/clouds/cluster_intermediate_1.html)
 
