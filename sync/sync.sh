@@ -3,6 +3,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+PROJECT_NAME=$(grep -m 1 '^PROJECT_NAME=' .env | cut -d '=' -f2)
+
 # Check if exactly three arguments are passed (source and target folders, and action)
 if [[ $# -ne 3 ]]; then
     echo "Usage: $0 <source_folder> <target_folder> <action>"
@@ -40,7 +42,7 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
       podman stop ml-lab-$counter || true && \
       podman build --build-arg-file=./argfile.conf --tag ml-lab:latest -f ./Dockerfile && \
       podman images -f dangling=true -q | xargs --no-run-if-empty podman rmi && \
-      podman run -d --rm --name ml-lab-$counter \
+      podman run -d --rm --name ${PROJECT_NAME}-$counter \
       --device=nvidia.com/gpu=all \
       --security-opt=label=disable \
       --net=host \
@@ -51,7 +53,7 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
       
     elif [[ "$action" == "stop" ]]; then
       # SSH into the remote host and stop docker-compose
-      ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && podman stop ml-lab-$counter || true'" > /dev/null 2>&1
+      ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && podman stop ${PROJECT_NAME}-$counter || true'" > /dev/null 2>&1
     fi
   else
     echo "$peer_host is unreachable or $peer_ssh_key does not exist"
