@@ -34,13 +34,28 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
       # Execute rsync command to synchronize files
       rsync --mkpath -acqz --delete -e "ssh -i $peer_ssh_key" "$source_directory"/ "${peer_user}@${peer_host}:~/${target_directory}" --exclude='/.git'
       
-      # SSH into the remote host and run docker-compose up
-      ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && sed -i 's/^NODE_RANK=.*/NODE_RANK=${counter}/' .env && docker compose up -d --build --force-recreate'" > /dev/null 2>&1
+      # SSH into the remote host and run build, clean and run container
+      ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && \
+      sed -i 's/^NODE_RANK=.*/NODE_RANK=${counter}/' .env && \
+      podman stop ml-lab-$counter || true && \
+      podman build --build-arg-file=./argfile.conf --tag ml-lab:latest -f ./Dockerfile && \
+      podman images -f dangling=true -q | xargs --no-run-if-empty podman rmi && \
+      podman run -d --rm --name ml-lab-$counter \
+      --device=nvidia.com/gpu=all \
+      --security-opt=label=disable \
+      --net=host \
+      --env-file=.env \
+      -v ./\${PROJECT_NAME}:/workspace/\${PROJECT_NAME} \
+      -v ./data:/workspace/data \
+      ml-lab:latest'" > /dev/null 2>&1
+      
     elif [[ "$action" == "stop" ]]; then
       # SSH into the remote host and stop docker-compose
-      ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && docker compose down'" > /dev/null 2>&1
+      ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && podman stop ml-lab-$counter || true'" > /dev/null 2>&1
     fi
   else
     echo "$peer_host is unreachable or $peer_ssh_key does not exist"
   fi
 done
+
+echo "Success"
