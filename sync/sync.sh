@@ -35,11 +35,11 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
     if [[ "$action" == "start" ]]; then
       # Execute rsync command to synchronize files
       rsync --mkpath -acqz --delete -e "ssh -i $peer_ssh_key" "$source_directory"/ "${peer_user}@${peer_host}:~/${target_directory}" --exclude='/.git'
-      
+
       # SSH into the remote host and run build, clean and run container
       ssh -n -i "$peer_ssh_key" "${peer_user}@${peer_host}" "bash -l -c 'cd ~/${target_directory} && \
       sed -i 's/^NODE_RANK=.*/NODE_RANK=${counter}/' .env && \
-      podman stop ml-lab-$counter || true && \
+      podman stop ${PROJECT_NAME}-$counter || true && \
       podman build --build-arg-file=./argfile.conf --tag ml-lab:latest -f ./Dockerfile && \
       podman images -f dangling=true -q | xargs --no-run-if-empty podman rmi && \
       podman run -d --rm --name ${PROJECT_NAME}-$counter \
