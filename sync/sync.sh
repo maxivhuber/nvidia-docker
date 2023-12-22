@@ -11,8 +11,9 @@ IFS=$'\n\t'
 PROJECT_NAME=$(grep -m 1 '^PROJECT_NAME=' .env | cut -d '=' -f2)
 
 # Ensure exactly three arguments are provided (source folder, target folder, action)
-if [[ $# -ne 3 ]]; then
-    echo "Usage: $0 <source_folder> <target_folder> <action>"
+if [[ $# -lt 3 ]]; then
+    echo "Usage: $0 <source_folder> <target_folder> <action> <optional: bash get file extension
+    file_path>"
     exit 1
 fi
 
@@ -21,6 +22,21 @@ source_directory="$1"
 target_directory="$2"
 action="$3"
 config_file="${source_directory}/sync/config.json"
+
+# Check if a fourth argument (file path) is provided and assign it to a variable if it is
+if [[ $# -eq 4 ]]; then
+    exec_file_path="$4"
+    exec_file_path_extension="${exec_file_path##*.}"
+
+    # Validate the file type (Python script or Jupyter notebook)
+    if [[ "$exec_file_path_extension" != "py" ]] && [[ "$exec_file_path_extension" != "ipynb" ]]; then
+        echo "Invalid file type: $exec_file_path_extension. Expected a Python script (.py) or a Jupyter notebook (.ipynb)."
+        exit 1
+    fi
+else
+    exec_file_path="" # Ensure file_path is empty if no fourth argument is provided
+    exec_file_path_extension=""
+fi
 
 # Check if provided action is either 'start' or 'stop'
 if [[ "$action" != "start" ]] && [[ "$action" != "stop" ]]; then
@@ -46,20 +62,62 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
       rsync --mkpath -acqz --delete -e "ssh -i $peer_ssh_key" "$source_directory"/ "${peer_user}@${peer_host}:~/${target_directory}" --exclude='/.git'
 
       # Execute commands on the remote host to start the container
-      ssh -i "$peer_ssh_key" -T "${peer_user}@${peer_host}" PROJECT_NAME="$PROJECT_NAME" COUNTER="$counter" TARGET_DIR="$target_directory" bash << 'EOF' > /dev/null 2>&1
-      cd ~/$TARGET_DIR
-      sed -i "s/^NODE_RANK=.*/NODE_RANK=$COUNTER/" .env
-      podman stop $PROJECT_NAME-$COUNTER || true
-      podman build --build-arg-file=./argfile.conf --tag ml-lab:latest -f ./Dockerfile
-      podman images -f dangling=true -q | xargs --no-run-if-empty podman rmi
-      podman run -d --rm --name $PROJECT_NAME-$COUNTER \
-        --device=nvidia.com/gpu=all \
-        --security-opt=label=disable \
-        --net=host \
-        --env-file=.env \
-        -v ./${PROJECT_NAME}:/workspace/${PROJECT_NAME} \
-        -v ./data:/workspace/data \
-        ml-lab:latest
+      ssh -i "$peer_ssh_key" -T "${peer_user}@${peer_host}" \
+        EXEC_FILE="$exec_file_path" \
+        FILE_EXTENSION="$exec_file_path_extension" \
+        PROJECT_NAME="$PROJECT_NAME" \
+        COUNTER="$counter" \
+        TARGET_DIR="$target_directory" bash << 'EOF' > /dev/null 2>&1
+        
+        # Change directory to the target directory
+        cd ~/$TARGET_DIR
+
+        # Update the NODE_RANK in the .env file
+        sed -i "s/^NODE_RANK=.*/NODE_RANK=$COUNTER/" .env
+
+        # Stop the existing podman container
+        podman stop $PROJECT_NAME-$COUNTER || true
+
+        # Build the new image with podman
+        podman build --build-arg-file=./argfile.conf --tag ml-lab:latest -f ./Dockerfile
+
+        # Remove dangling images
+        podman images -f dangling=true -q | xargs --no-run-if-empty podman rmi
+
+        # Run the podman container
+        podman run -d --rm --name $PROJECT_NAME-$COUNTER \
+            --device=nvidia.com/gpu=all \
+            --security-opt=label=disable \
+            --net=host \
+            --env-file=.env \
+            -v ./${PROJECT_NAME}:/workspace/${PROJECT_NAME} \
+            -v ./data:/workspace/data \
+            ml-lab:latest
+
+        # Define the execution path
+        EXEC_PATH="/workspace/${PROJECT_NAME}/$EXEC_FILE"
+        LOG=$PROJECT_NAME-$COUNTER.log
+
+        # Case statement for different file extensions
+        case $FILE_EXTENSION in
+            ipynb)
+                if podman exec $PROJECT_NAME-$COUNTER test -f "$EXEC_PATH"; then
+                    nohup podman exec $PROJECT_NAME-$COUNTER jupyter nbconvert --execute --to notebook --inplace $EXEC_PATH > $LOG 2>&1 & echo $! > run.pid
+                else
+                    echo "File $EXEC_PATH does not exist."
+                fi
+                ;;
+            py)
+                if podman exec $PROJECT_NAME-$COUNTER test -f "$EXEC_PATH"; then
+                    nohup podman exec $PROJECT_NAME-$COUNTER python $EXEC_PATH > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                else
+                    echo "File $EXEC_PATH does not exist."
+                fi
+                ;;
+            *)
+                echo "No execute: $FILE_EXTENSION"
+                ;;
+        esac
 EOF
 
     elif [[ "$action" == "stop" ]]; then
