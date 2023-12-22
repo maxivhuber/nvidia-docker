@@ -29,17 +29,22 @@ This guide provides instructions for setting up and using Podman containers for 
     - Run `bash build.sh` to build and start the container using Podman.
 - **Accessing Jupyter Lab**:
     - Connect to Jupyter Lab through `http://<ip-address>:<JUPYTER_PORT>/?token=<token>`
+- **Direct File Execution**:
+    - To directly execute a file, such as a notebook or script, from the terminal, use a command like the following:
+        - `( source .env && podman exec $PROJECT_NAME-$NODE_RANK python /workspace/my_project/my-project.py )`
+    - This command sources your environment variables from `.env` and executes the specified Python script or Jupyter notebook inside the Podman container.
 
 ### Synchronization between Nodes
 
-- **Sync Script**:
+- **Synchronization between Nodes with Optional File Execution**:
     - The `sync` folder contains a script for synchronizing your working directory with remote nodes, essential for training on a cluster.
     - The script supports `start` and `stop` actions for synchronizing and managing containers on remote nodes.
+    - Additionally, the `sync/sync.sh` command can take an optional fourth argument specifying a file/path (script or notebook) from the project directory, which will then be executed.
     - **Starting Synchronization and Containers**:
-        - Usage: `bash sync/sync.sh <local_absolute_path> <remote_relative_path> start`.
-        - For example: `bash sync/sync.sh ~/my_project/ .sync/my_project start`.
-    - **Stopping Containers**:
+        - Usage: `bash sync/sync.sh <local_absolute_path> <remote_relative_path> start [optional_file_path]`.
+        - For example, to start synchronization and execute a script: `bash sync/sync.sh ~/my_project .sync/my_project start /scripts/my-script.py`.
+    - **Stopping Remote Containers**:
         - Usage: `bash sync/sync.sh <local_absolute_path> <remote_relative_path> stop`.
-        - For example: `bash sync/sync.sh ~/my_project/ .sync/my_project stop`.
-- **Configuring Sync Settings**:
-    - Update the `sync/config.json` file to include your own nodes, their respective SSH access details, and keys. Ensure to replace `node1`, `node2`, etc., with your actual node details.
+        - For example: `bash sync/sync.sh ~/my_project .sync/my_project stop`.
+    - **Configuring Sync Settings**:
+        - Update the `sync/config.json` file to include your own nodes, their respective SSH access details, and keys. Ensure to replace `node1`, `node2`, etc., with your actual node details.
