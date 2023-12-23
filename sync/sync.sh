@@ -85,7 +85,7 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
         podman images -f dangling=true -q | xargs --no-run-if-empty podman rmi
 
         # Run the podman container
-        podman run -d --rm --name $PROJECT_NAME-$COUNTER \
+        podman run -d --rm --name $PROJECT_NAME-$COUNTER --ipc=host \ 
             --device=nvidia.com/gpu=all \
             --security-opt=label=disable \
             --net=host \
