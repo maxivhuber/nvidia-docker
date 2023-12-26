@@ -79,20 +79,21 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
         podman stop $PROJECT_NAME-$COUNTER || true
 
         # Build the new image with podman
-        podman build --build-arg-file=./argfile.conf --tag ml-lab:latest -f ./Dockerfile
+        podman build --format docker --build-arg-file=./argfile.conf --tag ml-lab:latest -f ./Dockerfile
 
         # Remove dangling images
         podman images -f dangling=true -q | xargs --no-run-if-empty podman rmi
 
         # Run the podman container
-        podman run -d --rm --name $PROJECT_NAME-$COUNTER --ipc=host \ 
+        podman run --init --rm --name $PROJECT_NAME-$COUNTER \
             --device=nvidia.com/gpu=all \
             --security-opt=label=disable \
+            --ipc=host \
             --net=host \
             --env-file=.env \
             -v ./${PROJECT_NAME}:/workspace/${PROJECT_NAME} \
             -v ./data:/workspace/data \
-            ml-lab:latest
+            -d ml-lab:latest
 
         # Define the execution path
         EXEC_PATH="/workspace/${PROJECT_NAME}/$EXEC_FILE"
