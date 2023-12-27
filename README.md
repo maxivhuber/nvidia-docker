@@ -15,7 +15,7 @@ This guide provides instructions for setting up and using Podman containers for 
 1. **Project Folder**:
     - Rename your project folder to `my_project`.
 2. **Environment Variables**:
-    - Open the `.env` file in the root directory.
+    - Open the `.env`/`.argfile` file in the root directory.
     - Set your project name as an environment variable (e.g., `PROJECT_NAME=my_project`).
     - Set the Jupyter Lab port (e.g., `JUPYTER_PORT=8000`).
     - Configure cluster settings (`MASTER_PORT`, `MASTER_ADDR`, `WORLD_SIZE`, `NODE_RANK`).
