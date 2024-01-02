@@ -10,7 +10,7 @@ IFS=$'\n\t'
 # Extract PROJECT_NAME from the first occurrence in the .env file
 PROJECT_NAME=$(grep -m 1 '^PROJECT_NAME=' .env | cut -d '=' -f2)
 
-# Ensure exactly three arguments are provided (source folder, target folder, action)
+# Ensure that a minimum of three arguments are provided (source folder, target folder, action)
 if [[ $# -lt 3 ]]; then
     echo "Usage: $0 <source_folder> <target_folder> <action> <optional: bash get file extension
     file_path>"
@@ -22,9 +22,10 @@ source_directory="$1"
 target_directory="$2"
 action="$3"
 config_file="${source_directory}/sync/config.json"
+run_args_string=""
 
 # Check if a fourth argument (file path) is provided and assign it to a variable if it is
-if [[ $# -eq 4 ]]; then
+if [[ $# -ge 4 ]]; then
     exec_file_path="$4"
     exec_file_path_extension="${exec_file_path##*.}"
 
@@ -33,6 +34,11 @@ if [[ $# -eq 4 ]]; then
         echo "Invalid file type: $exec_file_path_extension. Expected a Python script (.py) or a Jupyter notebook (.ipynb)."
         exit 1
     fi
+
+    # Prepare additional command line arguments e.g. the Python command
+    shift 4
+    run_args=("$@")
+    run_args_string=$(printf "%q " "${run_args[@]}")
 else
     exec_file_path="" # Ensure file_path is empty if no fourth argument is provided
     exec_file_path_extension=""
@@ -46,7 +52,6 @@ fi
 
 # Counter to track the number of peers processed
 counter=0
-
 # Read each peer entry from the JSON config and execute actions
 jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(.value.ssh_key)"' "$config_file" | while IFS=' ' read -r peer_name peer_host peer_user peer_ssh_key; do
   # Increment peer counter
@@ -67,13 +72,19 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
         FILE_EXTENSION="$exec_file_path_extension" \
         PROJECT_NAME="$PROJECT_NAME" \
         COUNTER="$counter" \
-        TARGET_DIR="$target_directory" bash << 'EOF' > /dev/null 2>&1
+        TARGET_DIR="$target_directory" bash -l -s -- "$run_args_string" << 'EOF' > /dev/null 2>&1
         
+        # "$@" has access to run_args_string
         # Change directory to the target directory
         cd ~/$TARGET_DIR
 
         # Update the NODE_RANK in the .env file
         sed -i "s/^NODE_RANK=.*/NODE_RANK=$COUNTER/" .env
+
+        # Update the machine_rank in the .config.yaml file
+        if [ -f "$PROJECT_NAME/default_config.yaml" ]; then
+            yq e ".machine_rank = $COUNTER" -i "$PROJECT_NAME/default_config.yaml"
+        fi
 
         # Stop the existing podman container
         podman stop $PROJECT_NAME-$COUNTER || true
@@ -92,6 +103,7 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
             --net=host \
             --env-file=.env \
             -v ./${PROJECT_NAME}:/workspace/${PROJECT_NAME} \
+            -v ./"${PROJECT_NAME}"/default_config.yaml:/workspace/.huggingface/accelerate/default_config.yaml \
             -v ./data:/workspace/data \
             -d ml-lab:latest
 
@@ -103,14 +115,18 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
         case $FILE_EXTENSION in
             ipynb)
                 if podman exec $PROJECT_NAME-$COUNTER test -f "$EXEC_PATH"; then
-                    nohup podman exec $PROJECT_NAME-$COUNTER jupyter nbconvert --execute --to notebook --inplace $EXEC_PATH > $LOG 2>&1 & echo $! > run.pid
+                    nohup podman exec $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate jupyter nbconvert --execute --to notebook --inplace $EXEC_PATH > $LOG 2>&1 & echo $! > run.pid
                 else
                     echo "File $EXEC_PATH does not exist."
                 fi
                 ;;
             py)
                 if podman exec $PROJECT_NAME-$COUNTER test -f "$EXEC_PATH"; then
-                    nohup podman exec $PROJECT_NAME-$COUNTER python $EXEC_PATH > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                    if [[ -n "$@" ]]; then
+                        nohup podman exec $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate python $EXEC_PATH "$@" > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                    else
+                        nohup podman exec $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate python $EXEC_PATH > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                    fi
                 else
                     echo "File $EXEC_PATH does not exist."
                 fi

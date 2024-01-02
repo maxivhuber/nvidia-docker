@@ -30,8 +30,8 @@ This guide provides instructions for setting up and using Podman containers for 
 - **Accessing Jupyter Lab**:
     - Connect to Jupyter Lab through `http://<ip-address>:<JUPYTER_PORT>/?token=<token>`
 - **Direct File Execution**:
-    - To directly execute a file, such as a notebook or script, from the terminal, use a command like the following:
-        - `( source .env && podman exec $PROJECT_NAME-$NODE_RANK python /workspace/my_project/my-project.py )`
+    - To directly execute a file, such as a python script, from the terminal, use a command like the following:
+        - `( source .env && podman exec -w /workspace/my_project $PROJECT_NAME-$NODE_RANK conda run --live-stream -n accelerate accelerate launch my-project.py --arg1 ../path/to/data )`
     - This command sources your environment variables from `.env` and executes the specified Python script or Jupyter notebook inside the Podman container.
 
 ### Synchronization between Nodes

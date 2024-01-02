@@ -16,6 +16,7 @@ podman run --init --rm --name "$PROJECT_NAME"-0 \
   --env-file=.env \
   -v ./"${PROJECT_NAME}":/workspace/"${PROJECT_NAME}" \
   -v ./data:/workspace/data \
+  -v ./"${PROJECT_NAME}"/default_config.yaml:/workspace/.huggingface/accelerate/default_config.yaml \
   -d ml-lab:latest > /dev/null 2>&1
 
 echo "Success"
