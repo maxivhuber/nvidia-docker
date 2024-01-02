@@ -123,9 +123,9 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
             py)
                 if podman exec $PROJECT_NAME-$COUNTER test -f "$EXEC_PATH"; then
                     if [[ -n "$@" ]]; then
-                        nohup podman exec $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate accelerate launch $EXEC_PATH "$@" > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                        nohup podman exec -w /workspace/$PROJECT_NAME $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate accelerate launch $EXEC_PATH "$@" > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
                     else
-                        nohup podman exec $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate accelerate launch $EXEC_PATH > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                        nohup podman exec -w /workspace/$PROJECT_NAME $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate accelerate launch $EXEC_PATH > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
                     fi
                 else
                     echo "File $EXEC_PATH does not exist."
