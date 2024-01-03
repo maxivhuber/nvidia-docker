@@ -9,6 +9,7 @@ IFS=$'\n\t'
 
 # Extract PROJECT_NAME from the first occurrence in the .env file
 PROJECT_NAME=$(grep -m 1 '^PROJECT_NAME=' .env | cut -d '=' -f2)
+LAUNCHER=$(grep -m 1 '^LAUNCHER=' .env | cut -d '=' -f2)
 
 # Ensure that a minimum of three arguments are provided (source folder, target folder, action)
 if [[ $# -lt 3 ]]; then
@@ -72,6 +73,7 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
         FILE_EXTENSION="$exec_file_path_extension" \
         PROJECT_NAME="$PROJECT_NAME" \
         COUNTER="$counter" \
+        LAUNCHER="$LAUNCHER" \
         TARGET_DIR="$target_directory" bash -l -s -- "$run_args_string" << 'EOF' > /dev/null 2>&1
         
         # "$@" has access to run_args_string
@@ -122,10 +124,24 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
                 ;;
             py)
                 if podman exec $PROJECT_NAME-$COUNTER test -f "$EXEC_PATH"; then
-                    if [[ -n "$@" ]]; then
-                        nohup podman exec -w /workspace/$PROJECT_NAME $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate accelerate launch $EXEC_PATH "$@" > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                    # Determine launch method based on LAUNCHER environment variable
+                    if [ "$LAUNCHER" = "accelerate" ]; then
+                        # Using accelerate launch
+                        if [[ -n "$@" ]]; then
+                            nohup podman exec -w /workspace/$PROJECT_NAME $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate accelerate launch $EXEC_PATH "$@" > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                        else
+                            nohup podman exec -w /workspace/$PROJECT_NAME $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate accelerate launch $EXEC_PATH > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                        fi
+                    elif [ "$LAUNCHER" = "python" ]; then
+                        # Using python
+                        if [[ -n "$@" ]]; then
+                            nohup podman exec -w /workspace/$PROJECT_NAME $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate python $EXEC_PATH "$@" > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                        else
+                            nohup podman exec -w /workspace/$PROJECT_NAME $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate python $EXEC_PATH > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                        fi
+
                     else
-                        nohup podman exec -w /workspace/$PROJECT_NAME $PROJECT_NAME-$COUNTER conda run --live-stream -n accelerate accelerate launch $EXEC_PATH > $PROJECT_NAME-$COUNTER.log 2>&1 & echo $! > run.pid
+                        echo "Invalid LAUNCHER: $LAUNCHER"
                     fi
                 else
                     echo "File $EXEC_PATH does not exist."
