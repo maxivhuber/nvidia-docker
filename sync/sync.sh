@@ -9,6 +9,7 @@ IFS=$'\n\t'
 
 # Extract PROJECT_NAME from the first occurrence in the .env file
 PROJECT_NAME=$(grep -m 1 '^PROJECT_NAME=' .env | cut -d '=' -f2)
+HF_HOME=$(grep -m 1 '^HF_HOME=' .env | cut -d '=' -f2)
 LAUNCHER=$(grep -m 1 '^LAUNCHER=' .env | cut -d '=' -f2)
 
 # Ensure that a minimum of three arguments are provided (source folder, target folder, action)
@@ -74,6 +75,7 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
         PROJECT_NAME="$PROJECT_NAME" \
         COUNTER="$counter" \
         LAUNCHER="$LAUNCHER" \
+        HF_HOME="$HF_HOME" \
         TARGET_DIR="$target_directory" bash -l -s -- "$run_args_string" << 'EOF' > /dev/null 2>&1
         
         # "$@" has access to run_args_string
@@ -104,9 +106,10 @@ jq -r '.peers | to_entries[] | "\(.key) \(.value.hostname) \(.value.username) \(
             --ipc=host \
             --net=host \
             --env-file=.env \
-            -v ./${PROJECT_NAME}:/workspace/${PROJECT_NAME} \
-            -v ./"${PROJECT_NAME}"/default_config.yaml:/workspace/.huggingface/accelerate/default_config.yaml \
+            -v ./"${PROJECT_NAME}":/workspace/"${PROJECT_NAME}" \
             -v ./data:/workspace/data \
+            -v huggingface_cache:"$HF_HOME" \
+            -v ./"${PROJECT_NAME}"/default_config.yaml:"$HF_HOME"/accelerate/default_config.yaml \
             -d ml-lab:latest
 
         # Define the execution path
